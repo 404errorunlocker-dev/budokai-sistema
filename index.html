@@ -19,7 +19,7 @@
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Roboto', sans-serif; }
         body { background-color: var(--bg-dark); color: var(--text-light); display: flex; height: 100vh; overflow: hidden; }
 
-        /* TELA DE LOGIN - MANTIDA EXATAMENTE IGUAL */
+        /* TELA DE LOGIN */
         #login-screen { display: flex; justify-content: center; align-items: center; width: 100%; height: 100vh; background: var(--bg-dark); }
         .login-box { background: var(--bg-card); padding: 40px; border-radius: 10px; border: 2px solid var(--border-red); width: 100%; max-width: 400px; text-align: center; box-shadow: 0 0 20px rgba(211, 47, 47, 0.2); }
         .login-logo { width: 100px; height: 100px; border-radius: 50%; border: 3px solid var(--accent-red); margin: 0 auto 20px; background: url('https://i.imgur.com/Q9Os7Gk.jpeg') center/cover; }
@@ -31,10 +31,10 @@
         .login-btn:hover { background: var(--accent-red-hover); transform: scale(1.02); }
         .login-error { color: var(--accent-red); margin-top: 10px; display: none; }
 
-        /* SISTEMA - OTIMIZADO */
+        /* SISTEMA */
         #system-screen { display: none; width: 100%; height: 100vh; }
         
-        /* SIDEBAR RESPONSIVA */
+        /* SIDEBAR */
         .sidebar { 
             width: 250px; 
             background-color: #111; 
@@ -108,12 +108,7 @@
         .modal-info p { margin: 8px 0; border-bottom: 1px solid #333; padding-bottom: 5px; font-size: 0.9rem; }
         .modal-info strong { color: var(--text-gray); display: inline-block; min-width: 120px; }
 
-        .freq-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin: 10px 0; }
-        .freq-stat { background: #222; padding: 10px; border-radius: 5px; text-align: center; }
-        .freq-stat .value { font-size: 1.5rem; font-weight: 700; }
-        .freq-stat .label { font-size: 0.7rem; color: var(--text-gray); }
-
-        /* MOBILE - OTIMIZADO */
+        /* MOBILE */
         @media(max-width: 768px) {
             body { flex-direction: column; height: 100vh; overflow: hidden; }
             #system-screen { flex-direction: column; }
@@ -168,7 +163,7 @@
 </head>
 <body>
 
-    <!-- TELA DE LOGIN - MANTIDA EXATAMENTE IGUAL -->
+    <!-- TELA DE LOGIN -->
     <div id="login-screen">
         <div class="login-box">
             <div class="login-logo"></div>
@@ -295,13 +290,12 @@
     </div>
 
     <script>
-        // CONFIGURAÇÃO DE LOGIN - MANTIDA EXATAMENTE IGUAL
+        // CONFIGURAÇÃO DE LOGIN
         const USER = "budokai123";
         const PASS = "admin";
         const API = 'https://budokai-backend.onrender.com/api';
         let alunos = [];
 
-        // VERIFICA SE JÁ ESTÁ LOGADO AO CARREGAR - MANTIDO IGUAL
         window.onload = function() {
             if(localStorage.getItem('isLoggedIn') === 'true') {
                 document.getElementById('login-screen').style.display = 'none';
@@ -312,7 +306,6 @@
             document.getElementById('data-atual').innerText = new Date().toLocaleDateString();
         };
 
-        // FUNÇÃO DE LOGIN - MANTIDA EXATAMENTE IGUAL
         function fazerLogin() {
             const user = document.getElementById('user-input').value;
             const pass = document.getElementById('pass-input').value;
@@ -328,7 +321,6 @@
             }
         }
 
-        // LOGOUT - MANTIDO IGUAL
         function fazerLogout() {
             localStorage.removeItem('isLoggedIn');
             document.getElementById('system-screen').style.display = 'none';
@@ -338,12 +330,10 @@
             document.getElementById('login-error').style.display = 'none';
         }
 
-        // SIDEBAR MOBILE
         function toggleSidebar() {
             document.getElementById('sidebar').classList.toggle('open');
         }
 
-        // NAVEGAÇÃO - MANTIDA IGUAL
         function showSection(id) {
             document.querySelectorAll('.content-section').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.sidebar ul li a').forEach(el => el.classList.remove('active'));
@@ -353,13 +343,11 @@
             if(id === 'dashboard') carregarEstatisticas();
             if(id === 'list-alunos' || id === 'frequencia') carregarAlunos();
             
-            // Fecha sidebar mobile
             if(window.innerWidth <= 768) {
                 document.getElementById('sidebar').classList.remove('open');
             }
         }
 
-        // FUNÇÕES AUXILIARES - MANTIDAS IGUAIS
         function calcularIdade(dataNasc) {
             const hoje = new Date();
             const nasc = new Date(dataNasc);
@@ -369,7 +357,6 @@
             return idade;
         }
 
-        // CARREGAR ALUNOS - MANTIDO IGUAL
         async function carregarAlunos() {
             try {
                 const resp = await fetch(`${API}/alunos`);
@@ -381,7 +368,6 @@
             }
         }
 
-        // RENDERIZAR TABELA DE ALUNOS - COM BOTÃO DE EXCLUIR ADICIONADO
         function renderizarTabela() {
             const tbody = document.getElementById('alunos-table-body');
             tbody.innerHTML = '';
@@ -405,7 +391,6 @@
             });
         }
 
-        // ABRIR FICHA - MANTIDA IGUAL
         function abrirFicha(id) {
             const aluno = alunos.find(a => a.id === id);
             if(!aluno) return;
@@ -431,7 +416,6 @@
 
         function fecharModal() { document.getElementById('modalFicha').style.display = 'none'; }
 
-        // EXCLUIR ALUNO - NOVA FUNÇÃO
         function confirmarExclusao(id, nome) {
             document.getElementById('confirm-msg').innerHTML = `Tem certeza que deseja excluir <strong>${nome}</strong>?<br><small style="color:var(--accent-red);">Esta ação não pode ser desfeita!</small>`;
             document.getElementById('modalConfirm').style.display = 'flex';
@@ -456,7 +440,6 @@
             }
         }
 
-        // CADASTRAR ALUNO - MANTIDO IGUAL
         async function cadastrarAluno() {
             const dados = {
                 nome: document.getElementById('nome').value,
@@ -485,7 +468,6 @@
             }
         }
 
-        // ALTERNAR PAGAMENTO - MANTIDO IGUAL
         async function togglePagamento(id, statusAtual) {
             try {
                 await fetch(`${API}/alunos/${id}`, {
@@ -500,7 +482,6 @@
             }
         }
 
-        // FREQUÊNCIA COM ESTATÍSTICAS - NOVA FUNÇÃO MELHORADA
         async function renderizarFrequencia() {
             const tbody = document.getElementById('frequencia-table-body');
             tbody.innerHTML = '';
@@ -515,4 +496,37 @@
                     const total = presentes + faltas;
                     const porcentagem = total > 0 ? Math.round((presentes / total) * 100) : 0;
                     
-                    // Verifica se já
+                    const hoje = new Date().toISOString().split('T')[0];
+                    const hojeStatus = frequencias.find(f => f.data === hoje);
+                    const statusHoje = hojeStatus ? hojeStatus.status : 'Não marcado';
+                    
+                    tbody.innerHTML += `
+                        <tr>
+                            <td><strong>${a.nome}</strong></td>
+                            <td style="color: #4caf50;">${presentes}</td>
+                            <td style="color: #f44336;">${faltas}</td>
+                            <td>
+                                <span style="color: ${porcentagem >= 75 ? '#4caf50' : porcentagem >= 50 ? '#ff9800' : '#f44336'}; font-weight: bold;">
+                                    ${porcentagem}%
+                                </span>
+                            </td>
+                            <td>${statusHoje}</td>
+                            <td>
+                                <button class="btn" style="padding:4px 10px; font-size:0.7rem;" onclick="marcarFrequencia(${a.id}, 'Presente')">✅</button>
+                                <button class="btn btn-outline" style="padding:4px 10px; font-size:0.7rem; border-color:var(--accent-red); color:var(--accent-red);" onclick="marcarFrequencia(${a.id}, 'Falta')">❌</button>
+                            </td>
+                        </tr>
+                    `;
+                } catch (error) {
+                    console.error("Erro ao carregar frequência do aluno:", error);
+                }
+            }
+        }
+
+        async function marcarFrequencia(id, status) {
+            const hoje = new Date().toISOString().split('T')[0];
+            try {
+                await fetch(`${API}/frequencia`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ aluno_id: id
