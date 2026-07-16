@@ -11,8 +11,6 @@ app.use(cors());
 app.use(bodyParser.json());
 
 // Configuração do banco de dados
-console.log('DATABASE_URL:', process.env.DATABASE_URL ? '✅ Configurada' : '❌ NÃO CONFIGURADA');
-
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
@@ -41,11 +39,10 @@ async function initDatabase() {
   try {
     console.log('🔄 Iniciando criação das tabelas...');
     
-    // Verifica conexão
     await pool.query('SELECT NOW()');
     console.log('✅ Conexão com banco estabelecida!');
 
-    // Cria tabela alunos
+    // Cria tabela alunos (compatível com seu HTML)
     await pool.query(`
       CREATE TABLE IF NOT EXISTS alunos (
         id SERIAL PRIMARY KEY,
@@ -66,7 +63,7 @@ async function initDatabase() {
     `);
     console.log('✅ Tabela alunos criada/verificada');
 
-    // Cria tabela frequencias
+    // Cria tabela frequencias (compatível com seu HTML)
     await pool.query(`
       CREATE TABLE IF NOT EXISTS frequencias (
         id SERIAL PRIMARY KEY,
@@ -82,21 +79,18 @@ async function initDatabase() {
     console.log('✅ Banco de dados inicializado com sucesso!');
   } catch (error) {
     console.error('❌ Erro ao inicializar banco:', error.message);
-    console.error('Detalhes:', error);
   }
 }
 
-// ROTAS DA API
+// ROTAS DA API (COMPATÍVEIS COM SEU HTML)
 
-// GET - Listar todos os alunos
+// GET - Listar todos os alunos (seu HTML usa /api/alunos)
 app.get('/api/alunos', async (req, res) => {
   try {
-    console.log('📊 Buscando alunos...');
     const result = await pool.query('SELECT * FROM alunos ORDER BY id DESC');
-    console.log(`✅ ${result.rows.length} alunos encontrados`);
     res.json(result.rows);
   } catch (error) {
-    console.error('❌ Erro ao buscar alunos:', error.message);
+    console.error('Erro ao buscar alunos:', error.message);
     res.status(500).json({ error: error.message });
   }
 });
@@ -115,7 +109,7 @@ app.get('/api/alunos/:id', async (req, res) => {
   }
 });
 
-// POST - Cadastrar aluno
+// POST - Cadastrar aluno (seu HTML usa /api/alunos com POST)
 app.post('/api/alunos', async (req, res) => {
   try {
     const {
@@ -144,7 +138,7 @@ app.post('/api/alunos', async (req, res) => {
   }
 });
 
-// PUT - Atualizar aluno
+// PUT - Atualizar aluno (seu HTML usa /api/alunos/:id com PUT)
 app.put('/api/alunos/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -165,7 +159,7 @@ app.put('/api/alunos/:id', async (req, res) => {
   }
 });
 
-// DELETE - Excluir aluno
+// DELETE - Excluir aluno (seu HTML pode usar depois)
 app.delete('/api/alunos/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -196,25 +190,7 @@ app.get('/api/frequencia/aluno/:id', async (req, res) => {
   }
 });
 
-// GET - Frequência de todos os alunos
-app.get('/api/frequencia/todos', async (req, res) => {
-  try {
-    const result = await pool.query(`
-      SELECT a.id, a.nome, 
-             COUNT(f.id) as total,
-             SUM(CASE WHEN f.status = 'Presente' THEN 1 ELSE 0 END) as presentes,
-             SUM(CASE WHEN f.status = 'Falta' THEN 1 ELSE 0 END) as faltas
-      FROM alunos a
-      LEFT JOIN frequencias f ON a.id = f.aluno_id
-      GROUP BY a.id, a.nome
-    `);
-    res.json(result.rows);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// POST - Marcar frequência
+// POST - Marcar frequência (seu HTML usa /api/frequencia com POST)
 app.post('/api/frequencia', async (req, res) => {
   try {
     const { aluno_id, data, status } = req.body;
@@ -242,7 +218,7 @@ app.post('/api/frequencia', async (req, res) => {
 initDatabase().then(() => {
   app.listen(port, () => {
     console.log(`🚀 Servidor rodando na porta ${port}`);
-    console.log(`📱 Acesse: https://budokai-backend.onrender.com`);
+    console.log(`📱 API: https://budokai-backend.onrender.com/api/alunos`);
   });
 });
 
@@ -252,6 +228,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: err.message });
 });
 
+// Rota 404
 app.use((req, res) => {
   res.status(404).json({ 
     error: 'Rota não encontrada',
