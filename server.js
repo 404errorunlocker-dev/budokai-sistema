@@ -15,6 +15,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // Pasta para servir as fotos e o site
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use(express.static(path.join(__dirname, 'public')));
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
 // Cria a pasta de uploads se não existir
 if (!fs.existsSync('./uploads')) fs.mkdirSync('./uploads');
