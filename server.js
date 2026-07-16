@@ -10,7 +10,9 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(bodyParser.json());
 
-// Configuração do banco de dados PostgreSQL
+// Configuração do banco de dados
+console.log('DATABASE_URL:', process.env.DATABASE_URL ? '✅ Configurada' : '❌ NÃO CONFIGURADA');
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
@@ -18,12 +20,13 @@ const pool = new Pool({
   }
 });
 
-// ROTA RAIZ - Corrige o erro "Cannot GET /"
+// ROTA RAIZ
 app.get('/', (req, res) => {
   res.json({
     nome: 'Budokai Fight API',
     versao: '1.0.0',
     status: 'Online',
+    banco: process.env.DATABASE_URL ? 'Conectado' : 'Sem banco',
     rotas: {
       alunos: '/api/alunos',
       aluno: '/api/alunos/:id',
@@ -36,6 +39,13 @@ app.get('/', (req, res) => {
 // Criar tabelas
 async function initDatabase() {
   try {
+    console.log('🔄 Iniciando criação das tabelas...');
+    
+    // Verifica conexão
+    await pool.query('SELECT NOW()');
+    console.log('✅ Conexão com banco estabelecida!');
+
+    // Cria tabela alunos
     await pool.query(`
       CREATE TABLE IF NOT EXISTS alunos (
         id SERIAL PRIMARY KEY,
@@ -54,7 +64,9 @@ async function initDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    console.log('✅ Tabela alunos criada/verificada');
 
+    // Cria tabela frequencias
     await pool.query(`
       CREATE TABLE IF NOT EXISTS frequencias (
         id SERIAL PRIMARY KEY,
@@ -65,10 +77,12 @@ async function initDatabase() {
         UNIQUE(aluno_id, data)
       )
     `);
+    console.log('✅ Tabela frequencias criada/verificada');
     
-    console.log('✅ Banco de dados inicializado');
+    console.log('✅ Banco de dados inicializado com sucesso!');
   } catch (error) {
-    console.error('Erro ao inicializar banco:', error);
+    console.error('❌ Erro ao inicializar banco:', error.message);
+    console.error('Detalhes:', error);
   }
 }
 
@@ -77,9 +91,12 @@ async function initDatabase() {
 // GET - Listar todos os alunos
 app.get('/api/alunos', async (req, res) => {
   try {
+    console.log('📊 Buscando alunos...');
     const result = await pool.query('SELECT * FROM alunos ORDER BY id DESC');
+    console.log(`✅ ${result.rows.length} alunos encontrados`);
     res.json(result.rows);
   } catch (error) {
+    console.error('❌ Erro ao buscar alunos:', error.message);
     res.status(500).json({ error: error.message });
   }
 });
@@ -106,7 +123,6 @@ app.post('/api/alunos', async (req, res) => {
       cirurgias, resp_nome, resp_parentesco, resp_telefone, foto
     } = req.body;
 
-    // Verifica se o nome foi enviado
     if (!nome) {
       return res.status(400).json({ error: 'Nome é obrigatório' });
     }
@@ -123,19 +139,16 @@ app.post('/api/alunos', async (req, res) => {
 
     res.status(201).json(result.rows[0]);
   } catch (error) {
+    console.error('Erro ao cadastrar:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// PUT - Atualizar aluno (status de pagamento)
+// PUT - Atualizar aluno
 app.put('/api/alunos/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { status_pagamento } = req.body;
-
-    if (status_pagamento === undefined) {
-      return res.status(400).json({ error: 'status_pagamento é obrigatório' });
-    }
 
     const result = await pool.query(
       'UPDATE alunos SET status_pagamento = $1 WHERE id = $2 RETURNING *',
@@ -156,11 +169,7 @@ app.put('/api/alunos/:id', async (req, res) => {
 app.delete('/api/alunos/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    
-    // Primeiro deleta as frequências do aluno
     await pool.query('DELETE FROM frequencias WHERE aluno_id = $1', [id]);
-    
-    // Depois deleta o aluno
     const result = await pool.query('DELETE FROM alunos WHERE id = $1 RETURNING *', [id]);
 
     if (result.rows.length === 0) {
@@ -187,7 +196,7 @@ app.get('/api/frequencia/aluno/:id', async (req, res) => {
   }
 });
 
-// GET - Frequência de todos os alunos (opcional)
+// GET - Frequência de todos os alunos
 app.get('/api/frequencia/todos', async (req, res) => {
   try {
     const result = await pool.query(`
@@ -210,13 +219,8 @@ app.post('/api/frequencia', async (req, res) => {
   try {
     const { aluno_id, data, status } = req.body;
 
-    // Validações
     if (!aluno_id || !data || !status) {
       return res.status(400).json({ error: 'aluno_id, data e status são obrigatórios' });
-    }
-
-    if (!['Presente', 'Falta'].includes(status)) {
-      return res.status(400).json({ error: 'Status deve ser "Presente" ou "Falta"' });
     }
 
     const result = await pool.query(
@@ -238,18 +242,16 @@ app.post('/api/frequencia', async (req, res) => {
 initDatabase().then(() => {
   app.listen(port, () => {
     console.log(`🚀 Servidor rodando na porta ${port}`);
-    console.log(`📱 Acesse: http://localhost:${port}`);
-    console.log(`📊 API: http://localhost:${port}/api/alunos`);
+    console.log(`📱 Acesse: https://budokai-backend.onrender.com`);
   });
 });
 
-// Tratamento de erros globais
+// Tratamento de erros
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ error: 'Algo deu errado!' });
+  console.error('Erro:', err);
+  res.status(500).json({ error: err.message });
 });
 
-// Rota 404 - Para rotas não encontradas
 app.use((req, res) => {
   res.status(404).json({ 
     error: 'Rota não encontrada',
