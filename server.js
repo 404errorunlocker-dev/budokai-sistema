@@ -1,109 +1,187 @@
-// server.js
 const express = require('express');
-const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const path = require('path');
-const fs = require('fs');
+const { Pool } = require('pg');
 
 const app = express();
-const PORT = 3000;
+const port = process.env.PORT || 3000;
 
+// Middleware
 app.use(cors());
 app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
-// Pasta para servir as fotos e o site
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-app.use(express.static(path.join(__dirname, 'public')));
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
-// Cria a pasta de uploads se não existir
-if (!fs.existsSync('./uploads')) fs.mkdirSync('./uploads');
-
-// Conectando ao Banco SQLite (Cria o arquivo automaticamente)
-const db = new sqlite3.Database('./budokai.db', (err) => {
-    if (err) console.error(err.message);
-    console.log('Conectado ao banco SQLite.');
+// Configuração do banco de dados PostgreSQL
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false
+  }
 });
 
-// Criando a tabela de Alunos
-db.run(`CREATE TABLE IF NOT EXISTS alunos (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    nome TEXT NOT NULL,
-    dataNasc TEXT NOT NULL,
-    cpf TEXT,
-    alergias TEXT,
-    doencas TEXT,
-    medicamentos TEXT,
-    cirurgias TEXT,
-    resp_nome TEXT,
-    resp_parentesco TEXT,
-    resp_telefone TEXT,
-    statusPagamento INTEGER DEFAULT 0,
-    foto TEXT
-)`);
+// Criar tabelas
+async function initDatabase() {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS alunos (
+        id SERIAL PRIMARY KEY,
+        nome VARCHAR(100) NOT NULL,
+        data_nasc DATE NOT NULL,
+        cpf VARCHAR(20),
+        alergias TEXT,
+        doencas TEXT,
+        medicamentos TEXT,
+        cirurgias TEXT,
+        resp_nome VARCHAR(100),
+        resp_parentesco VARCHAR(50),
+        resp_telefone VARCHAR(20),
+        foto TEXT,
+        status_pagamento INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
 
-// Criando a tabela de Frequência
-db.run(`CREATE TABLE IF NOT EXISTS frequencia (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    aluno_id INTEGER,
-    data TEXT,
-    status TEXT, -- 'Presente' ou 'Falta'
-    FOREIGN KEY(aluno_id) REFERENCES alunos(id)
-)`);
-
-// --- ROTAS DA API ---
-
-// 1. Listar todos os alunos
-app.get('/api/alunos', (req, res) => {
-    db.all("SELECT * FROM alunos ORDER BY id DESC", [], (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json(rows);
-    });
-});
-
-// 2. Cadastrar novo aluno (versão simplificada sem upload de arquivo pesado por enquanto)
-app.post('/api/alunos', (req, res) => {
-    const { nome, dataNasc, cpf, alergias, doencas, medicamentos, cirurgias, resp_nome, resp_parentesco, resp_telefone, foto } = req.body;
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS frequencias (
+        id SERIAL PRIMARY KEY,
+        aluno_id INTEGER REFERENCES alunos(id) ON DELETE CASCADE,
+        data DATE NOT NULL,
+        status VARCHAR(20) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(aluno_id, data)
+      )
+    `);
     
-    const sql = `INSERT INTO alunos (nome, dataNasc, cpf, alergias, doencas, medicamentos, cirurgias, resp_nome, resp_parentesco, resp_telefone, statusPagamento, foto) 
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)`;
-    const params = [nome, dataNasc, cpf, alergias, doencas, medicamentos, cirurgias, resp_nome, resp_parentesco, resp_telefone, foto || ''];
+    console.log('✅ Banco de dados inicializado');
+  } catch (error) {
+    console.error('Erro ao inicializar banco:', error);
+  }
+}
 
-    db.run(sql, params, function(err) {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json({ id: this.lastID, success: true });
-    });
+// ROTAS DA API
+
+// GET - Listar todos os alunos
+app.get('/api/alunos', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM alunos ORDER BY id DESC');
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
-// 3. Atualizar Status de Pagamento
-app.put('/api/alunos/:id', (req, res) => {
-    const id = req.params.id;
-    const { statusPagamento } = req.body;
-    db.run(`UPDATE alunos SET statusPagamento = ? WHERE id = ?`, [statusPagamento, id], function(err) {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json({ success: true });
-    });
+// GET - Buscar um aluno
+app.get('/api/alunos/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query('SELECT * FROM alunos WHERE id = $1', [id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Aluno não encontrado' });
+    }
+    res.json(result.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
-// 4. Marcar Frequência
-app.post('/api/frequencia', (req, res) => {
+// POST - Cadastrar aluno
+app.post('/api/alunos', async (req, res) => {
+  try {
+    const {
+      nome, data_nasc, cpf, alergias, doencas, medicamentos,
+      cirurgias, resp_nome, resp_parentesco, resp_telefone, foto
+    } = req.body;
+
+    const result = await pool.query(
+      `INSERT INTO alunos 
+       (nome, data_nasc, cpf, alergias, doencas, medicamentos, 
+        cirurgias, resp_nome, resp_parentesco, resp_telefone, foto, status_pagamento)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 0)
+       RETURNING *`,
+      [nome, data_nasc, cpf, alergias, doencas, medicamentos,
+       cirurgias, resp_nome, resp_parentesco, resp_telefone, foto]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// PUT - Atualizar aluno
+app.put('/api/alunos/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status_pagamento } = req.body;
+
+    const result = await pool.query(
+      'UPDATE alunos SET status_pagamento = $1 WHERE id = $2 RETURNING *',
+      [status_pagamento, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Aluno não encontrado' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// DELETE - Excluir aluno
+app.delete('/api/alunos/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await pool.query('DELETE FROM frequencias WHERE aluno_id = $1', [id]);
+    const result = await pool.query('DELETE FROM alunos WHERE id = $1 RETURNING *', [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Aluno não encontrado' });
+    }
+
+    res.json({ message: 'Aluno excluído com sucesso' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET - Frequência de um aluno
+app.get('/api/frequencia/aluno/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(
+      'SELECT * FROM frequencias WHERE aluno_id = $1 ORDER BY data DESC',
+      [id]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST - Marcar frequência
+app.post('/api/frequencia', async (req, res) => {
+  try {
     const { aluno_id, data, status } = req.body;
-    // Verifica se já foi marcado nesse dia
-    db.get(`SELECT id FROM frequencia WHERE aluno_id = ? AND data = ?`, [aluno_id, data], (err, row) => {
-        if (err) return res.status(500).json({ error: err.message });
-        if (row) {
-            // Atualiza
-            db.run(`UPDATE frequencia SET status = ? WHERE id = ?`, [status, row.id]);
-        } else {
-            // Insere novo
-            db.run(`INSERT INTO frequencia (aluno_id, data, status) VALUES (?, ?, ?)`, [aluno_id, data, status]);
-        }
-        res.json({ success: true });
-    });
+
+    const result = await pool.query(
+      `INSERT INTO frequencias (aluno_id, data, status)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (aluno_id, data) 
+       DO UPDATE SET status = $3
+       RETURNING *`,
+      [aluno_id, data, status]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
-// Roda o servidor
-app.listen(PORT, () => {
-    console.log(`Servidor rodando em http://localhost:${PORT}`);
+// Inicializar banco e iniciar servidor
+initDatabase().then(() => {
+  app.listen(port, () => {
+    console.log(`🚀 Servidor rodando na porta ${port}`);
+  });
 });
