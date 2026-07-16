@@ -18,6 +18,21 @@ const pool = new Pool({
   }
 });
 
+// ROTA RAIZ - Corrige o erro "Cannot GET /"
+app.get('/', (req, res) => {
+  res.json({
+    nome: 'Budokai Fight API',
+    versao: '1.0.0',
+    status: 'Online',
+    rotas: {
+      alunos: '/api/alunos',
+      aluno: '/api/alunos/:id',
+      frequencia: '/api/frequencia/aluno/:id',
+      marcar_frequencia: '/api/frequencia'
+    }
+  });
+});
+
 // Criar tabelas
 async function initDatabase() {
   try {
@@ -91,6 +106,11 @@ app.post('/api/alunos', async (req, res) => {
       cirurgias, resp_nome, resp_parentesco, resp_telefone, foto
     } = req.body;
 
+    // Verifica se o nome foi enviado
+    if (!nome) {
+      return res.status(400).json({ error: 'Nome é obrigatório' });
+    }
+
     const result = await pool.query(
       `INSERT INTO alunos 
        (nome, data_nasc, cpf, alergias, doencas, medicamentos, 
@@ -107,11 +127,15 @@ app.post('/api/alunos', async (req, res) => {
   }
 });
 
-// PUT - Atualizar aluno
+// PUT - Atualizar aluno (status de pagamento)
 app.put('/api/alunos/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { status_pagamento } = req.body;
+
+    if (status_pagamento === undefined) {
+      return res.status(400).json({ error: 'status_pagamento é obrigatório' });
+    }
 
     const result = await pool.query(
       'UPDATE alunos SET status_pagamento = $1 WHERE id = $2 RETURNING *',
@@ -132,7 +156,11 @@ app.put('/api/alunos/:id', async (req, res) => {
 app.delete('/api/alunos/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    
+    // Primeiro deleta as frequências do aluno
     await pool.query('DELETE FROM frequencias WHERE aluno_id = $1', [id]);
+    
+    // Depois deleta o aluno
     const result = await pool.query('DELETE FROM alunos WHERE id = $1 RETURNING *', [id]);
 
     if (result.rows.length === 0) {
@@ -159,10 +187,37 @@ app.get('/api/frequencia/aluno/:id', async (req, res) => {
   }
 });
 
+// GET - Frequência de todos os alunos (opcional)
+app.get('/api/frequencia/todos', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT a.id, a.nome, 
+             COUNT(f.id) as total,
+             SUM(CASE WHEN f.status = 'Presente' THEN 1 ELSE 0 END) as presentes,
+             SUM(CASE WHEN f.status = 'Falta' THEN 1 ELSE 0 END) as faltas
+      FROM alunos a
+      LEFT JOIN frequencias f ON a.id = f.aluno_id
+      GROUP BY a.id, a.nome
+    `);
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // POST - Marcar frequência
 app.post('/api/frequencia', async (req, res) => {
   try {
     const { aluno_id, data, status } = req.body;
+
+    // Validações
+    if (!aluno_id || !data || !status) {
+      return res.status(400).json({ error: 'aluno_id, data e status são obrigatórios' });
+    }
+
+    if (!['Presente', 'Falta'].includes(status)) {
+      return res.status(400).json({ error: 'Status deve ser "Presente" ou "Falta"' });
+    }
 
     const result = await pool.query(
       `INSERT INTO frequencias (aluno_id, data, status)
@@ -183,5 +238,21 @@ app.post('/api/frequencia', async (req, res) => {
 initDatabase().then(() => {
   app.listen(port, () => {
     console.log(`🚀 Servidor rodando na porta ${port}`);
+    console.log(`📱 Acesse: http://localhost:${port}`);
+    console.log(`📊 API: http://localhost:${port}/api/alunos`);
+  });
+});
+
+// Tratamento de erros globais
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ error: 'Algo deu errado!' });
+});
+
+// Rota 404 - Para rotas não encontradas
+app.use((req, res) => {
+  res.status(404).json({ 
+    error: 'Rota não encontrada',
+    message: 'Acesse / para ver as rotas disponíveis'
   });
 });
