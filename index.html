@@ -3,19 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Budokai Fight - Sistema</title>
+    <title>Budokai Fight - Login</title>
     <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;700&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
     <style>
         :root { --bg-dark: #1a1a1a; --bg-card: #2b2b2b; --text-light: #f0f0f0; --text-gray: #b0b0b0; --accent-red: #d32f2f; --accent-red-hover: #b71c1c; --border-red: #aa0000; --green-pago: #388e3c; }
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Roboto', sans-serif; }
         body { background-color: var(--bg-dark); color: var(--text-light); display: flex; height: 100vh; overflow: hidden; }
-        .sidebar { width: 250px; background-color: #111; border-right: 2px solid var(--border-red); padding: 20px; display: flex; flex-direction: column; }
+
+        /* TELA DE LOGIN */
+        #login-screen { display: flex; justify-content: center; align-items: center; width: 100%; height: 100vh; background: var(--bg-dark); }
+        .login-box { background: var(--bg-card); padding: 40px; border-radius: 10px; border: 2px solid var(--border-red); width: 100%; max-width: 400px; text-align: center; box-shadow: 0 0 20px rgba(211, 47, 47, 0.2); }
+        .login-logo { width: 100px; height: 100px; border-radius: 50%; border: 3px solid var(--accent-red); margin: 0 auto 20px; background: url('https://i.imgur.com/Q9Os7Gk.jpeg') center/cover; }
+        .login-box h1 { font-family: 'Oswald', sans-serif; color: #fff; letter-spacing: 2px; margin-bottom: 30px; }
+        .login-box h1 span { color: var(--accent-red); }
+        .login-input { width: 100%; padding: 15px; margin-bottom: 15px; background: #222; border: 1px solid #444; border-radius: 5px; color: #fff; font-size: 1rem; }
+        .login-input:focus { outline: none; border-color: var(--accent-red); }
+        .login-btn { width: 100%; padding: 15px; background: var(--accent-red); color: #fff; border: none; border-radius: 5px; font-weight: 700; font-size: 1.1rem; cursor: pointer; transition: 0.3s; text-transform: uppercase; }
+        .login-btn:hover { background: var(--accent-red-hover); transform: scale(1.02); }
+        .login-error { color: var(--accent-red); margin-top: 10px; display: none; }
+
+        /* SISTEMA (Fica escondido até logar) */
+        #system-screen { display: none; width: 100%; height: 100vh; }
+        .sidebar { width: 250px; background-color: #111; border-right: 2px solid var(--border-red); padding: 20px; display: flex; flex-direction: column; height: 100%; }
         .logo-area { display: flex; align-items: center; margin-bottom: 40px; border-bottom: 1px solid #333; padding-bottom: 15px; }
-        .logo-circle { width: 60px; height: 60px; border-radius: 50%; border: 2px solid var(--accent-red); margin-right: 10px; background: url('https://i.imgur.com/8q8Yx2p.png') center/cover; }
+        .logo-circle { width: 60px; height: 60px; border-radius: 50%; border: 2px solid var(--accent-red); margin-right: 10px; background: url('https://i.imgur.com/Q9Os7Gk.jpeg') center/cover; }
         .sidebar h1 { font-family: 'Oswald', sans-serif; font-size: 1.2rem; color: #fff; letter-spacing: 1px; }
-        .sidebar ul { list-style: none; }
+        .sidebar ul { list-style: none; flex: 1; }
+        .sidebar ul li { margin-bottom: 10px; }
         .sidebar ul li a { color: var(--text-gray); text-decoration: none; padding: 10px 15px; display: block; border-radius: 5px; transition: 0.3s; font-weight: 700; text-transform: uppercase; font-size: 0.9rem; }
         .sidebar ul li a:hover, .sidebar ul li a.active { background-color: var(--accent-red); color: #fff; box-shadow: 0 0 10px rgba(211, 47, 47, 0.3); }
+        .logout-btn { color: var(--text-gray); cursor: pointer; padding: 10px; text-align: center; border-top: 1px solid #333; margin-top: 10px; transition: 0.3s; }
+        .logout-btn:hover { color: var(--accent-red); }
+
         .main-content { flex: 1; padding: 30px; overflow-y: auto; }
         .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 15px; }
         .header-top h2 { font-family: 'Oswald', sans-serif; color: #fff; text-transform: uppercase; letter-spacing: 2px; }
@@ -53,7 +72,7 @@
         .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px; background: #222; border: 1px solid #444; border-radius: 5px; color: #fff; }
         .form-group input:focus { outline: none; border-color: var(--accent-red); }
 
-        /* MODAL ESTILIZADO */
+        /* MODAL */
         .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 999; }
         .modal-box { background: #222; padding: 30px; border-radius: 10px; border: 1px solid var(--border-red); max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; position: relative; }
         .modal-box h2 { font-family: 'Oswald', sans-serif; color: var(--accent-red); border-bottom: 1px solid #444; padding-bottom: 10px; margin-bottom: 15px; }
@@ -64,93 +83,105 @@
 
         @media(max-width: 768px) {
             body { flex-direction: column; height: auto; overflow: auto; }
-            .sidebar { width: 100%; border-right: none; border-bottom: 2px solid var(--border-red); }
+            .sidebar { width: 100%; border-right: none; border-bottom: 2px solid var(--border-red); height: auto; }
             .form-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
-    <aside class="sidebar">
-        <div class="logo-area">
-            <div class="logo-circle"></div>
-            <h1>BUDOKAI<br><span style="color:var(--accent-red);">FIGHT</span></h1>
+
+    <!-- TELA DE LOGIN -->
+    <div id="login-screen">
+        <div class="login-box">
+            <div class="login-logo"></div>
+            <h1>BUDOKAI <span>FIGHT</span></h1>
+            <input type="text" class="login-input" id="user-input" placeholder="Usuário">
+            <input type="password" class="login-input" id="pass-input" placeholder="Senha">
+            <button class="login-btn" onclick="fazerLogin()">Entrar</button>
+            <div class="login-error" id="login-error">Usuário ou senha incorretos!</div>
         </div>
-        <ul>
-            <li><a href="#" onclick="showSection('dashboard')" class="active">Dashboard</a></li>
-            <li><a href="#" onclick="showSection('list-alunos')">Lista de Alunos</a></li>
-            <li><a href="#" onclick="showSection('novo-aluno')">Nova Matrícula</a></li>
-            <li><a href="#" onclick="showSection('frequencia')">Frequência</a></li>
-        </ul>
-    </aside>
+    </div>
 
-    <main class="main-content">
-        <div class="header-top"><h2 id="page-title">Dashboard</h2><div class="admin-badge" style="background:#333;padding:8px 15px;border-radius:20px;border:1px solid var(--accent-red);color:#fff;">👤 Admin</div></div>
-
-        <!-- DASHBOARD -->
-        <div id="dashboard" class="content-section active">
-            <div class="stats-grid">
-                <div class="stat-card"><h3>Total de Alunos</h3><p id="total-alunos">0</p></div>
-                <div class="stat-card"><h3>Mensalidades em Dia</h3><p style="color: #4caf50;" id="total-pagos">0</p></div>
-                <div class="stat-card"><h3>Inadimplentes</h3><p style="color: var(--accent-red);" id="total-devedores">0</p></div>
+    <!-- TELA DO SISTEMA (ESCONDIDA) -->
+    <div id="system-screen">
+        <aside class="sidebar">
+            <div class="logo-area">
+                <div class="logo-circle"></div>
+                <h1>BUDOKAI<br><span style="color:var(--accent-red);">FIGHT</span></h1>
             </div>
-        </div>
+            <ul>
+                <li><a href="#" onclick="showSection('dashboard')" class="active">Dashboard</a></li>
+                <li><a href="#" onclick="showSection('list-alunos')">Lista de Alunos</a></li>
+                <li><a href="#" onclick="showSection('novo-aluno')">Nova Matrícula</a></li>
+                <li><a href="#" onclick="showSection('frequencia')">Frequência</a></li>
+            </ul>
+            <div class="logout-btn" onclick="fazerLogout()">🚪 Sair do Sistema</div>
+        </aside>
 
-        <!-- LISTA -->
-        <div id="list-alunos" class="content-section">
-            <div class="list-header"><h3>Lista Geral de Alunos</h3><button class="btn" onclick="showSection('novo-aluno')">+ Novo Aluno</button></div>
-            <div style="overflow-x:auto;">
-                <table>
-                    <thead><tr><th>Foto</th><th>Nome</th><th>Idade</th><th>Mensalidade</th><th>Ações</th></tr></thead>
-                    <tbody id="alunos-table-body"></tbody>
-                </table>
+        <main class="main-content">
+            <div class="header-top"><h2 id="page-title">Dashboard</h2><div class="admin-badge" style="background:#333;padding:8px 15px;border-radius:20px;border:1px solid var(--accent-red);color:#fff;">👤 Admin</div></div>
+
+            <div id="dashboard" class="content-section active">
+                <div class="stats-grid">
+                    <div class="stat-card"><h3>Total de Alunos</h3><p id="total-alunos">0</p></div>
+                    <div class="stat-card"><h3>Mensalidades em Dia</h3><p style="color: #4caf50;" id="total-pagos">0</p></div>
+                    <div class="stat-card"><h3>Inadimplentes</h3><p style="color: var(--accent-red);" id="total-devedores">0</p></div>
+                </div>
             </div>
-        </div>
 
-        <!-- CADASTRO -->
-        <div id="novo-aluno" class="content-section">
-            <div class="list-header"><h3>Ficha de Matrícula e Médica</h3><button class="btn btn-outline" onclick="showSection('list-alunos')">Voltar</button></div>
-            <form id="form-cadastro" onsubmit="event.preventDefault(); cadastrarAluno();">
-                <div class="form-grid">
-                    <div>
-                        <h4 style="color:var(--text-gray); border-bottom: 1px solid #444; padding-bottom:5px;">Dados Pessoais</h4>
-                        <div class="form-group"><label>Nome Completo</label><input type="text" id="nome" required></div>
-                        <div class="form-group"><label>Data de Nascimento</label><input type="date" id="data_nasc" required></div>
-                        <div class="form-group"><label>CPF</label><input type="text" id="cpf" placeholder="000.000.000-00"></div>
-                        <div class="form-group"><label>URL da Foto (Opcional)</label><input type="text" id="foto" placeholder="https://exemplo.com/foto.jpg"></div>
-                    </div>
-                    <div>
-                        <h4 style="color:var(--text-gray); border-bottom: 1px solid #444; padding-bottom:5px;">Ficha Médica</h4>
-                        <div class="form-group"><label>Alergias</label><input type="text" id="alergias" placeholder="Ex: Poeira, Amendoim"></div>
-                        <div class="form-group"><label>Doenças Crônicas</label><input type="text" id="doencas" placeholder="Ex: Asma, Diabetes"></div>
-                        <div class="form-group"><label>Medicamentos em Uso</label><input type="text" id="medicamentos" placeholder="Ex: Omeprazol"></div>
-                        <div class="form-group"><label>Cirurgias Anteriores</label><input type="text" id="cirurgias" placeholder="Ex: Apendicite"></div>
-                    </div>
-                    <div style="grid-column: 1 / -1;">
-                        <h4 style="color:var(--text-gray); border-bottom: 1px solid #444; padding-bottom:5px;">Responsável (Caso Menor de Idade)</h4>
-                        <div class="form-grid">
-                            <div class="form-group"><label>Nome do Responsável</label><input type="text" id="resp_nome"></div>
-                            <div class="form-group"><label>Parentesco</label><input type="text" id="resp_parentesco" placeholder="Pai, Mãe..."></div>
-                            <div class="form-group"><label>Contato de Emergência</label><input type="text" id="resp_telefone" placeholder="(00) 99999-9999"></div>
+            <div id="list-alunos" class="content-section">
+                <div class="list-header"><h3>Lista Geral de Alunos</h3><button class="btn" onclick="showSection('novo-aluno')">+ Novo Aluno</button></div>
+                <div style="overflow-x:auto;">
+                    <table>
+                        <thead><tr><th>Foto</th><th>Nome</th><th>Idade</th><th>Mensalidade</th><th>Ações</th></tr></thead>
+                        <tbody id="alunos-table-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="novo-aluno" class="content-section">
+                <div class="list-header"><h3>Ficha de Matrícula e Médica</h3><button class="btn btn-outline" onclick="showSection('list-alunos')">Voltar</button></div>
+                <form id="form-cadastro" onsubmit="event.preventDefault(); cadastrarAluno();">
+                    <div class="form-grid">
+                        <div>
+                            <h4 style="color:var(--text-gray); border-bottom: 1px solid #444; padding-bottom:5px;">Dados Pessoais</h4>
+                            <div class="form-group"><label>Nome Completo</label><input type="text" id="nome" required></div>
+                            <div class="form-group"><label>Data de Nascimento</label><input type="date" id="data_nasc" required></div>
+                            <div class="form-group"><label>CPF</label><input type="text" id="cpf" placeholder="000.000.000-00"></div>
+                            <div class="form-group"><label>URL da Foto (Opcional)</label><input type="text" id="foto" placeholder="https://exemplo.com/foto.jpg"></div>
+                        </div>
+                        <div>
+                            <h4 style="color:var(--text-gray); border-bottom: 1px solid #444; padding-bottom:5px;">Ficha Médica</h4>
+                            <div class="form-group"><label>Alergias</label><input type="text" id="alergias" placeholder="Ex: Poeira, Amendoim"></div>
+                            <div class="form-group"><label>Doenças Crônicas</label><input type="text" id="doencas" placeholder="Ex: Asma, Diabetes"></div>
+                            <div class="form-group"><label>Medicamentos em Uso</label><input type="text" id="medicamentos" placeholder="Ex: Omeprazol"></div>
+                            <div class="form-group"><label>Cirurgias Anteriores</label><input type="text" id="cirurgias" placeholder="Ex: Apendicite"></div>
+                        </div>
+                        <div style="grid-column: 1 / -1;">
+                            <h4 style="color:var(--text-gray); border-bottom: 1px solid #444; padding-bottom:5px;">Responsável (Caso Menor)</h4>
+                            <div class="form-grid">
+                                <div class="form-group"><label>Nome do Responsável</label><input type="text" id="resp_nome"></div>
+                                <div class="form-group"><label>Parentesco</label><input type="text" id="resp_parentesco" placeholder="Pai, Mãe..."></div>
+                                <div class="form-group"><label>Contato de Emergência</label><input type="text" id="resp_telefone" placeholder="(00) 99999-9999"></div>
+                            </div>
                         </div>
                     </div>
-                </div>
-                <button type="submit" class="btn" style="width:100%; padding:15px; margin-top:20px;">Cadastrar Aluno</button>
-            </form>
-        </div>
-
-        <!-- FREQUÊNCIA -->
-        <div id="frequencia" class="content-section">
-            <div class="list-header"><h3>Controle de Frequência Manual</h3><span style="color:var(--text-gray);">Hoje: <span id="data-atual"></span></span></div>
-            <div style="overflow-x:auto;">
-                <table>
-                    <thead><tr><th>Aluno</th><th>Status Hoje</th><th>Ações</th></tr></thead>
-                    <tbody id="frequencia-table-body"></tbody>
-                </table>
+                    <button type="submit" class="btn" style="width:100%; padding:15px; margin-top:20px;">Cadastrar Aluno</button>
+                </form>
             </div>
-        </div>
-    </main>
 
-    <!-- MODAL DE FICHA COMPLETA -->
+            <div id="frequencia" class="content-section">
+                <div class="list-header"><h3>Controle de Frequência Manual</h3><span style="color:var(--text-gray);">Hoje: <span id="data-atual"></span></span></div>
+                <div style="overflow-x:auto;">
+                    <table>
+                        <thead><tr><th>Aluno</th><th>Status Hoje</th><th>Ações</th></tr></thead>
+                        <tbody id="frequencia-table-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
     <div class="modal-overlay" id="modalFicha">
         <div class="modal-box">
             <button class="modal-close" onclick="fecharModal()">×</button>
@@ -160,6 +191,43 @@
     </div>
 
     <script>
+        // CONFIGURAÇÃO DE LOGIN
+        const USER = "budokai123";
+        const PASS = "admin";
+
+        // Verifica se já está logado ao carregar a página
+        window.onload = function() {
+            if(localStorage.getItem('isLoggedIn') === 'true') {
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('system-screen').style.display = 'flex';
+                carregarEstatisticas();
+            }
+        };
+
+        function fazerLogin() {
+            const user = document.getElementById('user-input').value;
+            const pass = document.getElementById('pass-input').value;
+            if(user === USER && pass === PASS) {
+                localStorage.setItem('isLoggedIn', 'true'); // Salva o login no navegador
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('system-screen').style.display = 'flex';
+                document.getElementById('login-error').style.display = 'none';
+                carregarEstatisticas();
+            } else {
+                document.getElementById('login-error').style.display = 'block';
+            }
+        }
+
+        function fazerLogout() {
+            localStorage.removeItem('isLoggedIn');
+            document.getElementById('system-screen').style.display = 'none';
+            document.getElementById('login-screen').style.display = 'flex';
+            document.getElementById('user-input').value = '';
+            document.getElementById('pass-input').value = '';
+            document.getElementById('login-error').style.display = 'none';
+        }
+
+        // Lógica do Sistema (Mesmo código de antes)
         const API = 'https://budokai-backend.onrender.com/api'; 
         let alunos = [];
 
@@ -180,7 +248,6 @@
             return idade;
         }
 
-        // 1. CARREGAR ALUNOS
         async function carregarAlunos() {
             try {
                 const resp = await fetch(`${API}/alunos`);
@@ -189,7 +256,6 @@
                 renderizarFrequencia();
             } catch (error) {
                 console.error("Erro ao buscar alunos:", error);
-                alert("Erro ao conectar com o servidor. Verifique se o Render está ativo.");
             }
         }
 
@@ -207,19 +273,17 @@
                         <td>${idade} anos</td>
                         <td><span class="status-badge ${statusClass}">${statusText}</span></td>
                         <td class="action-icons">
-                            <button class="icon-btn check" onclick="togglePagamento(${a.id}, ${a.statusPagamento})" title="Pago/Não Pago">✔</button>
-                            <button class="icon-btn" onclick="abrirFicha(${a.id})" title="Ver Ficha Completa">👁</button>
+                            <button class="icon-btn check" onclick="togglePagamento(${a.id}, ${a.statusPagamento})">✔</button>
+                            <button class="icon-btn" onclick="abrirFicha(${a.id})">👁</button>
                         </td>
                     </tr>
                 `;
             });
         }
 
-        // 2. ABRIR FICHA MÉDICA (NOVO)
         function abrirFicha(id) {
             const aluno = alunos.find(a => a.id === id);
             if(!aluno) return;
-
             document.getElementById('modal-nome').innerText = `Ficha de ${aluno.nome}`;
             document.getElementById('modal-conteudo').innerHTML = `
                 <p><strong>Data de Nascimento:</strong> ${aluno.dataNasc}</p>
@@ -240,11 +304,8 @@
             document.getElementById('modalFicha').style.display = 'flex';
         }
 
-        function fecharModal() {
-            document.getElementById('modalFicha').style.display = 'none';
-        }
+        function fecharModal() { document.getElementById('modalFicha').style.display = 'none'; }
 
-        // 3. CADASTRAR ALUNO
         async function cadastrarAluno() {
             const dados = {
                 nome: document.getElementById('nome').value,
@@ -259,7 +320,6 @@
                 resp_telefone: document.getElementById('resp_telefone').value,
                 foto: document.getElementById('foto').value
             };
-            
             await fetch(`${API}/alunos`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -270,7 +330,6 @@
             showSection('list-alunos');
         }
 
-        // 4. ALTERNAR PAGAMENTO
         async function togglePagamento(id, statusAtual) {
             await fetch(`${API}/alunos/${id}`, {
                 method: 'PUT',
@@ -281,7 +340,6 @@
             carregarEstatisticas();
         }
 
-        // 5. FREQUÊNCIA
         function renderizarFrequencia() {
             document.getElementById('data-atual').innerText = new Date().toLocaleDateString();
             const tbody = document.getElementById('frequencia-table-body');
@@ -319,12 +377,8 @@
                 const pagos = dados.filter(a => a.statusPagamento == 1).length;
                 document.getElementById('total-pagos').innerText = pagos;
                 document.getElementById('total-devedores').innerText = dados.length - pagos;
-            } catch (error) {
-                console.error("Erro ao carregar estatísticas:", error);
-            }
+            } catch (error) {}
         }
-
-        window.onload = () => { carregarEstatisticas(); };
     </script>
 </body>
 </html>
